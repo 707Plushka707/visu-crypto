@@ -1,43 +1,96 @@
 const binance = require('./controller/binance-interface.js')
-const storage = require('./controller/json-storage.js')
+//const storage = require('./controller/json-storage.js')
+const storage = require('electron-json-storage')
+
 
 window.addEventListener('DOMContentLoaded', () => {
 
     /* 
      * coin = sigla da moeda
      */
-    const populatePanel = (coin) => {
+    const populatePanel = (coin, index) => {
         binance.websockets.prevDay(coin, (error, response) => {
-            let priceEl = document.querySelector(`.${coin} .price`)
-            let titleEl = document.querySelector(`.${coin} .title`)
-            let perceEl = document.querySelector(`.${coin} .percentage`)
+            let priceEl = document.querySelectorAll('.coin-panel .price')
+            let titleEl = document.querySelectorAll('.coin-panel .title')
+            let perceEl = document.querySelectorAll('.coin-panel .percentage')
 
-            priceEl.innerText = Math.round(response.averagePrice * 100) / 100  //Diminuir para 2 casas decimais 
-            titleEl.innerText = response.symbol
-            perceEl.innerText = response.percentChange
+            priceEl[index].innerText = Math.round(response.averagePrice * 100) / 100  //Diminuir para 2 casas decimais 
+            titleEl[index].innerText = response.symbol
+            perceEl[index].innerText = Math.round(response.percentChange * 100) / 100 + '%'
 
-            changePercentageColor(response, perceEl)
+            if (response.percentChange < 0)
+                perceEl[index].style.color = 'red';
+            else
+                perceEl[index].style.color = 'green';
         });
     }
 
-    const changePercentageColor = (response, element) => {
-        if (response.percentChange < 0)
-            element.style.color = 'red';
-        else
-            element.style.color = 'green';
+    function checkPage() {
+        return window.location.pathname
     }
 
-    let getParams = global.location.search;
+    function findGetParameter(parameterName) {
+        var result = null,
+            tmp = [];
+        location.search
+            .substr(1)
+            .split("&")
+            .forEach(function (item) {
+              tmp = item.split("=");
+              if (tmp[0] === parameterName) result = decodeURIComponent(tmp[1]);
+            });
+        return result;
+    }
+    
+    if (checkPage().includes('index')) {
+        console.log('index')
 
-    if (getParams) {
-        let newSymbol = getParams.split('=')[1]
-        storage.addNewKey(newSymbol, { symbol: newSymbol })
+        storage.keys(function (error, keys) {
+            if (error) throw error;
+
+            keys.forEach(function (value, i) {
+                console.log(value + i)
+                populatePanel(value, i)
+            })
+        });
     }
 
+    if (checkPage().includes('assets')) {
+        console.log('assets')
 
-    storage.getAllKeys().forEach(element => {
-        console.log(element)
-    });
+        function updateCoinList(){
+            document.querySelector('#tbs-body').innerHTML = ''
+
+            storage.keys(function (error, keys) {
+                if (error) throw error;
+    
+                keys.forEach(function (value, i) {
+                    document.querySelector('#tbs-body').innerHTML += "<tr><td class='tbs-symbol'>" + value + "</td><td></td><td></td><td></td><td></td><td style='text-align:right; padding-right: 25px;' class='tbs-delete'><a href='?delete=" + value + "'>X</a></td></tr>"
+                })
+            });
+        }
+        
+        updateCoinList();
+
+        if(findGetParameter('delete')){
+            deleteSymbol = findGetParameter('delete')
+            storage.remove(deleteSymbol, function(error) {
+                if (error) throw error;
+              });
+        }
+
+        if (findGetParameter('symbol')) {
+            newSymbol = findGetParameter('symbol')
+            storage.set(newSymbol, { symbol: newSymbol }, function (error) {
+                if (error) throw error;
+                updateCoinList();
+            });
+        }
+
+        
+
+    }
+
 
 
     /* const getAllCoins = () => {

@@ -19,15 +19,17 @@ function addNewKey(name, object) {
 }
 
 function getAllKeys() {
-    var keyarray = []
+
+    var cryptosObj = {}
     storage.keys(function (error, keys) {
         if (error) throw error;
 
-        for (var key of keys)
-            keyarray.push(key)
+        for (var key of keys) {
+            cryptosObj[`${key}`] = { orders: {} }
+        }
     });
 
-    return keyarray;
+    return cryptosObj
 }
 
 
